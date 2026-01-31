@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	
+	<meta title="RSDKv2" package="com.hriof4r3vr.rsdkv2" version="1.0.0" company="HiroRealHD" />
+	<app main="Main" path="Export" file="RSDKv2" />
+	<window width="1280" height="720" fps="60" background="#000000" hardware="true" vsync="false" />
+	
+	<source path="Source" />
+	
+	<haxelib name="lime" />
+	
+	<assets path="Assets" rename="" />
+</project>
