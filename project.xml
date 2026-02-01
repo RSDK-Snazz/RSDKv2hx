@@ -3,7 +3,7 @@
 	
 	<meta title="RSDKv2" package="com.hriof4r3vr.rsdkv2" version="1.0.0" company="HiroRealHD" />
 	<app main="Main" path="Export" file="RSDKv2" />
-	<window width="1280" height="720" fps="60" background="#000000" hardware="true" vsync="false" />
+	<window width="640" height="480" fps="60" background="#000000" hardware="true" vsync="false" resizable="true" />
 	
 	<source path="Source" />
 	
