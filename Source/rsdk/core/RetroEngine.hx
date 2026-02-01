@@ -18,6 +18,15 @@ enum RetroStates {
 }
 
 class RetroEngine {
+    public static inline final ENGINE_DEVMENU:Int = 0;
+    public static inline final ENGINE_MAINGAME:Int = 1;
+    public static inline final ENGINE_INITDEVMENU:Int = 2;
+    public static inline final ENGINE_EXITGAME:Int = 3;
+    public static inline final ENGINE_SCRIPTERROR:Int = 4;
+    public static inline final ENGINE_ENTER_HIRESMODE:Int = 5;
+    public static inline final ENGINE_EXIT_HIRESMODE:Int = 6;
+    public static inline final ENGINE_PAUSE:Int = 7;
+    public static inline final ENGINE_WAIT:Int = 8;
     public static inline final SCREEN_YSIZE:Int = 240;
     public static inline final SCREEN_CENTERY:Int = 120;
     public static inline final BASE_PATH:String = "";
@@ -30,6 +39,7 @@ class RetroEngine {
 
     public static var initialised:Bool = false;
     public static var gameRunning:Bool = false;
+    public static var running:Bool = true;
 
     public static var gameMode:Int = 1;
     public static var colourMode:Int = 1;
@@ -55,6 +65,7 @@ class RetroEngine {
 
     public static var gameWindowText:Array<Int> = RetroString.createArray(0x40);
     public static var gameDescriptionText:Array<Int> = RetroString.createArray(0x100);
+    public static var gameVersion:Array<Int> = RetroString.createArray(0x40);
 
     public static var isFullScreen:Bool = false;
     public static var startFullScreen:Bool = false;
@@ -91,7 +102,9 @@ class RetroEngine {
                 if (Audio.initSoundDevice() != 0) {
                     initialised = true;
                     gameRunning = true;
-                    gameMode = 1;
+                    gameMode = ENGINE_MAINGAME;
+                    Scene.activeStageList = (startList_Game == 0xFF) ? 0 : startList_Game;
+                    Scene.stageListPosition = (startStage_Game == 0xFF) ? 0 : startStage_Game;
                 }
             }
         }
@@ -119,8 +132,9 @@ class RetroEngine {
 
             fileBuffer = Reader.fileReadByte();
             for (i in 0...fileBuffer) {
-                Reader.fileReadByte();
+                gameVersion[i] = Reader.fileReadByte();
             }
+            gameVersion[fileBuffer] = 0;
 
             fileBuffer = Reader.fileReadByte();
             for (i in 0...fileBuffer) {

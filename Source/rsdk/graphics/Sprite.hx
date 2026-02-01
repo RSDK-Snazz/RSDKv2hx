@@ -208,46 +208,51 @@ class Sprite {
     }
 
     public static function loadRSVFile(filePath:String, sheetID:Int):Int {
-        var info = new FileInfo();
-        if (Reader.loadFile(filePath, info)) {
-            var surface = Drawing.gfxSurface[sheetID];
-            RetroString.strCopy(surface.fileName, filePath);
-
-            Video.videoSurface = sheetID;
-            Video.currentVideoFrame = 0;
-
-            var fileBuffer = 0;
-
-            fileBuffer = Reader.fileReadByte();
-            Video.videoFrameCount = fileBuffer;
-            fileBuffer = Reader.fileReadByte();
-            Video.videoFrameCount += fileBuffer << 8;
-
-            fileBuffer = Reader.fileReadByte();
-            Video.videoWidth = fileBuffer;
-            fileBuffer = Reader.fileReadByte();
-            Video.videoWidth += fileBuffer << 8;
-
-            fileBuffer = Reader.fileReadByte();
-            Video.videoHeight = fileBuffer;
-            fileBuffer = Reader.fileReadByte();
-            Video.videoHeight += fileBuffer << 8;
-
-            Video.videoFilePos = Reader.getFilePosition();
-            Video.videoPlaying = true;
-            surface.width = Video.videoWidth;
-            surface.height = Video.videoHeight;
-            surface.dataPosition = Drawing.gfxDataPosition;
-            Drawing.gfxDataPosition += surface.width * surface.height;
-
-            if (Drawing.gfxDataPosition >= Drawing.GFXDATA_MAX) {
-                Drawing.gfxDataPosition = 0;
-                Debug.printLog("WARNING: Exceeded max gfx size!");
-            }
-
-            return 1;
+        var fileData = Reader.loadFileAsBytes(filePath);
+        if (fileData == null) {
+            Debug.printLog("loadRSVFile: Failed to load: " + filePath);
+            return 0;
         }
-        return 0;
+
+        Video.videoFileData = fileData;
+        Video.videoReadPos = 0;
+
+        var surface = Drawing.gfxSurface[sheetID];
+        RetroString.strCopy(surface.fileName, filePath);
+
+        Video.videoSurface = sheetID;
+        Video.currentVideoFrame = 0;
+
+        var fileBuffer = 0;
+
+        fileBuffer = fileData.get(Video.videoReadPos++);
+        Video.videoFrameCount = fileBuffer;
+        fileBuffer = fileData.get(Video.videoReadPos++);
+        Video.videoFrameCount += fileBuffer << 8;
+
+        fileBuffer = fileData.get(Video.videoReadPos++);
+        Video.videoWidth = fileBuffer;
+        fileBuffer = fileData.get(Video.videoReadPos++);
+        Video.videoWidth += fileBuffer << 8;
+
+        fileBuffer = fileData.get(Video.videoReadPos++);
+        Video.videoHeight = fileBuffer;
+        fileBuffer = fileData.get(Video.videoReadPos++);
+        Video.videoHeight += fileBuffer << 8;
+
+        Video.videoFilePos = Video.videoReadPos;
+        Video.videoPlaying = true;
+        surface.width = Video.videoWidth;
+        surface.height = Video.videoHeight;
+        surface.dataPosition = Drawing.gfxDataPosition;
+        Drawing.gfxDataPosition += surface.width * surface.height;
+
+        if (Drawing.gfxDataPosition >= Drawing.GFXDATA_MAX) {
+            Drawing.gfxDataPosition = 0;
+            Debug.printLog("WARNING: Exceeded max gfx size!");
+        }
+
+        return 1;
     }
 
     public static function clearGraphicsData():Void {

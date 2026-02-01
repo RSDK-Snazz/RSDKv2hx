@@ -1,6 +1,7 @@
 package rsdk.graphics;
 
-import rsdk.core.Reader;
+import haxe.io.Bytes;
+import rsdk.core.RetroString;
 import rsdk.graphics.Drawing;
 import rsdk.graphics.Palette;
 import rsdk.graphics.IndexedGif;
@@ -14,56 +15,84 @@ class Video {
     public static var videoFilePos:Int = 0;
     public static var videoPlaying:Bool = false;
 
+    public static var videoFileData:Bytes = null;
+    public static var videoReadPos:Int = 0;
+
+    public static function stopVideoPlayback():Void {
+        if (videoPlaying) {
+            videoPlaying = false;
+            if (videoSurface >= 0 && videoSurface < Drawing.SURFACE_MAX) {
+                RetroString.strCopy(Drawing.gfxSurface[videoSurface].fileName, "");
+            }
+        }
+        videoFileData = null;
+        videoReadPos = 0;
+        currentVideoFrame = 0;
+        videoFrameCount = 0;
+        videoFilePos = 0;
+    }
+
+    static function videoReadByte():Int {
+        if (videoFileData != null && videoReadPos < videoFileData.length) {
+            return videoFileData.get(videoReadPos++);
+        }
+        return 0;
+    }
+
+    static function videoSetPosition(pos:Int):Void {
+        videoReadPos = pos;
+    }
+
     public static function updateVideoFrame():Void {
         if (videoPlaying) {
             if (videoFrameCount <= currentVideoFrame) {
                 videoPlaying = false;
-                Reader.closeFile();
+                videoFileData = null;
             } else {
                 var surface = Drawing.gfxSurface[videoSurface];
                 
-                var fileBuffer = Reader.fileReadByte();
+                var fileBuffer = videoReadByte();
                 videoFilePos += fileBuffer;
-                fileBuffer = Reader.fileReadByte();
+                fileBuffer = videoReadByte();
                 videoFilePos += fileBuffer << 8;
-                fileBuffer = Reader.fileReadByte();
+                fileBuffer = videoReadByte();
                 videoFilePos += fileBuffer << 16;
-                fileBuffer = Reader.fileReadByte();
+                fileBuffer = videoReadByte();
                 videoFilePos += fileBuffer << 24;
 
                 for (i in 0...0x80) {
-                    var r = Reader.fileReadByte();
-                    var g = Reader.fileReadByte();
-                    var b = Reader.fileReadByte();
+                    var r = videoReadByte();
+                    var g = videoReadByte();
+                    var b = videoReadByte();
                     Palette.setPaletteEntry(i, r, g, b);
                 }
                 Palette.setPaletteEntry(0, 0, 0, 0);
 
-                fileBuffer = Reader.fileReadByte();
-                while (fileBuffer != 0x2C) fileBuffer = Reader.fileReadByte();
+                fileBuffer = videoReadByte();
+                while (fileBuffer != 0x2C) fileBuffer = videoReadByte();
 
-                Reader.fileReadByte();
-                Reader.fileReadByte();
-                Reader.fileReadByte();
-                Reader.fileReadByte();
-                Reader.fileReadByte();
-                Reader.fileReadByte();
-                Reader.fileReadByte();
-                Reader.fileReadByte();
+                videoReadByte();
+                videoReadByte();
+                videoReadByte();
+                videoReadByte();
+                videoReadByte();
+                videoReadByte();
+                videoReadByte();
+                videoReadByte();
                 
-                var paletteType = Reader.fileReadByte();
+                var paletteType = videoReadByte();
                 var interlaced = ((paletteType & 0x40) >> 6) != 0;
                 if ((paletteType >> 7) == 1) {
                     for (c in 0x80...0x100) {
-                        Reader.fileReadByte();
-                        Reader.fileReadByte();
-                        Reader.fileReadByte();
+                        videoReadByte();
+                        videoReadByte();
+                        videoReadByte();
                     }
                 }
                 
                 readGifPictureData(surface.width, surface.height, interlaced, surface.dataPosition);
 
-                Reader.setFilePosition(videoFilePos);
+                videoSetPosition(videoFilePos);
                 currentVideoFrame++;
             }
         }
@@ -90,7 +119,7 @@ class Video {
     }
 
     static function initGifDecoder():Void {
-        var val = Reader.fileReadByte();
+        var val = videoReadByte();
         gifDecoder.fileState = 0;
         gifDecoder.position = 0;
         gifDecoder.bufferSize = 0;
@@ -197,14 +226,14 @@ class Video {
         if (gifDecoder.fileState == 1) return 0;
         
         if (gifDecoder.position == gifDecoder.bufferSize) {
-            var b = Reader.fileReadByte();
+            var b = videoReadByte();
             gifDecoder.bufferSize = b;
             if (gifDecoder.bufferSize == 0) {
                 gifDecoder.fileState = 1;
                 return 0;
             }
             for (i in 0...gifDecoder.bufferSize) {
-                gifDecoder.buffer[i] = Reader.fileReadByte();
+                gifDecoder.buffer[i] = videoReadByte();
             }
             var result = gifDecoder.buffer[0];
             gifDecoder.position = 1;

@@ -15,6 +15,7 @@ import rsdk.core.Debug;
 import rsdk.graphics.Drawing;
 import rsdk.graphics.Palette;
 import rsdk.scene.Scene;
+import rsdk.dev.DevMenu;
 import rsdk.input.Input;
 
 class Main extends Application {
@@ -30,6 +31,8 @@ class Main extends Application {
         }
         window.title = gameTitle;
         
+        applyWindowSettings();
+        
         var buffer = new ImageBuffer(new lime.utils.UInt8Array(Drawing.SCREEN_XSIZE * Drawing.SCREEN_YSIZE * 4), Drawing.SCREEN_XSIZE, Drawing.SCREEN_YSIZE);
         screenImage = new Image(buffer, 0, 0, Drawing.SCREEN_XSIZE, Drawing.SCREEN_YSIZE);
         
@@ -43,13 +46,35 @@ class Main extends Application {
         initialized = true;
         Debug.printLog("Window created, engine initialized");
     }
+    
+    function applyWindowSettings():Void {
+        var scaledWidth = Drawing.SCREEN_XSIZE * RetroEngine.windowScale;
+        var scaledHeight = Drawing.SCREEN_YSIZE * RetroEngine.windowScale;
+        window.resize(scaledWidth, scaledHeight);
+        
+        if (RetroEngine.startFullScreen) {
+            window.fullscreen = true;
+        }
+        
+        window.borderless = RetroEngine.borderless;
+    }
 
     public override function update(deltaTime:Int):Void {
         if (!initialized) return;
         if (!RetroEngine.gameRunning) return;
+        if (!RetroEngine.running) {
+            RetroEngine.gameRunning = false;
+            Sys.exit(0);
+            return;
+        }
         
         Input.readInputDevice();
-        Scene.processStage();
+        
+        if (RetroEngine.gameMode == RetroEngine.ENGINE_DEVMENU) {
+            DevMenu.processDevMenu();
+        } else {
+            Scene.processStage();
+        }
     }
 
     static var renderLogged:Bool = false;
@@ -109,8 +134,13 @@ class Main extends Application {
         Input.onKeyDown(keyCode);
         switch (keyCode) {
             case ESCAPE:
-                RetroEngine.gameRunning = false;
-                Sys.exit(0);
+                if (RetroEngine.devMenu) {
+                    if (RetroEngine.gameMode == RetroEngine.ENGINE_DEVMENU) {
+                        DevMenu.closeDevMenu();
+                    } else if (RetroEngine.gameMode == RetroEngine.ENGINE_MAINGAME) {
+                        DevMenu.openDevMenu();
+                    }
+                }
             default:
 	    }
     }

@@ -77,6 +77,7 @@ class Drawing {
 
     public static var frameBuffer:Array<Int> = null;
     public static var waterDrawPos:Int = SCREEN_YSIZE;
+    public static var useRGB565Mode:Bool = false;
 
 
     public static function initRenderDevice():Bool {
@@ -1242,6 +1243,23 @@ class Drawing {
         var pixels = Bytes.alloc(SCREEN_XSIZE * SCREEN_YSIZE * 4);
         var waterPos = waterDrawPos;
         if (waterPos > SCREEN_YSIZE) waterPos = SCREEN_YSIZE;
+
+        if (useRGB565Mode) {
+            for (y in 0...SCREEN_YSIZE) {
+                for (x in 0...SCREEN_XSIZE) {
+                    var rgb565 = frameBuffer[y * SCREEN_XSIZE + x];
+                    var pos = (y * SCREEN_XSIZE + x) * 4;
+                    var r = ((rgb565 >> 11) & 0x1F) << 3;
+                    var g = ((rgb565 >> 5) & 0x3F) << 2;
+                    var b = (rgb565 & 0x1F) << 3;
+                    pixels.set(pos, b);
+                    pixels.set(pos + 1, g);
+                    pixels.set(pos + 2, r);
+                    pixels.set(pos + 3, 0xFF);
+                }
+            }
+            return pixels;
+        }
 
         if (Palette.paletteMode != 0) {
             for (y in 0...waterPos) {

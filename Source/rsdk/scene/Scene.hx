@@ -14,6 +14,7 @@ import rsdk.scene.Script;
 import rsdk.scene.Collision.Collision;
 import rsdk.graphics.Animation;
 import rsdk.graphics.IndexedGif;
+import rsdk.graphics.Video;
 
 enum abstract StageListNames(Int) to Int {
     var STAGELIST_PRESENTATION = 0;
@@ -240,6 +241,7 @@ class Scene {
         }
         switch (stageMode) {
             case STAGEMODE_LOAD:
+                Video.stopVideoPlayback();
                 cameraEnabled = 1;
                 xScrollOffset = 0;
                 yScrollOffset = 0;
