@@ -3,11 +3,14 @@
 	
 	<meta title="RSDKv2" package="com.hriof4r3vr.rsdkv2" version="1.0.0" company="HiroRealHD" />
 	<app main="Main" path="Export" file="RSDKv2" />
-	<window width="640" height="480" fps="60" background="#000000" hardware="true" vsync="false" resizable="true" />
+	<window width="640" height="480" fps="60" background="#000000" hardware="false" vsync="false" resizable="true" />
 	
 	<source path="Source" />
 	
+	<haxelib name="openfl" />
 	<haxelib name="lime" />
+	<haxelib name="ini.hx" />
 	
 	<assets path="Assets" rename="" />
+	<haxedef name='no-deprecation-warnings' />
 </project>
