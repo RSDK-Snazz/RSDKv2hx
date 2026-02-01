@@ -9,7 +9,6 @@
 	
 	<haxelib name="openfl" />
 	<haxelib name="lime" />
-	<haxelib name="ini.hx" />
 	
 	<assets path="Assets" rename="" />
 	<haxedef name='no-deprecation-warnings' />
