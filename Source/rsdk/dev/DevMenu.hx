@@ -8,6 +8,7 @@ import rsdk.audio.Audio;
 import rsdk.input.Input;
 import rsdk.core.RetroEngine;
 import rsdk.core.RetroString;
+import rsdk.core.ModAPI;
 import rsdk.storage.Userdata;
 import rsdk.dev.DevFont;
 
@@ -26,6 +27,7 @@ class DevMenu {
     public static var playerListPos:Int = 0;
     public static var sceneState:Int = 0;
     public static var storedStageMode:Int = 0;
+    public static var modsChanged:Bool = false;
     
     public static inline var SCREEN_CENTERX:Int = 160;
     public static inline var SCREEN_CENTERY:Int = 120;
@@ -183,9 +185,9 @@ class DevMenu {
     }
     
     public static function mainMenu():Void {
-        var selectionCount = 5;
-        var selectionColors = [0x808090, 0x808090, 0x808090, 0x808090, 0x808090];
-        var selectionNames = ["Resume", "Restart", "Stage Select", "Options", "Exit"];
+        var selectionCount = 6;
+        var selectionColors = [0x808090, 0x808090, 0x808090, 0x808090, 0x808090, 0x808090];
+        var selectionNames = ["Resume", "Restart", "Stage Select", "Options", "Mods", "Exit"];
         selectionColors[selection] = 0xF0F0F0;
         
         var y = SCREEN_CENTERY - 80;
@@ -196,17 +198,22 @@ class DevMenu {
         drawDevString("Dev Menu", SCREEN_CENTERX, y, ALIGN_CENTER, 0xF0F0F0);
         
         y += 8;
+        if (modsChanged) {
+            drawDevString("Game will restart on resume!", SCREEN_CENTERX, y, ALIGN_CENTER, 0xF08080);
+        }
+        
+        y += 8;
         drawDevString(RetroString.arrayToString(RetroEngine.gameWindowText), SCREEN_CENTERX, y, ALIGN_CENTER, 0x808090);
         
         y += 8;
         drawDevString("Haxe port by Hiro/f4r3vr", SCREEN_CENTERX, y, ALIGN_CENTER, 0x808090);
         
         y += 24;
-        drawDevRect(SCREEN_CENTERX - 128, y - 8, 0x100, 0x48, 0x000080, 0xC0);
+        drawDevRect(SCREEN_CENTERX - 128, y - 8, 0x100, 0x50, 0x000080, 0xC0);
         
         for (i in 0...selectionCount) {
             drawDevString(selectionNames[i], SCREEN_CENTERX, y, ALIGN_CENTER, selectionColors[i]);
-            y += 12;
+            y += 10;
         }
         
         if (Input.gKeyPress.up == 1) {
@@ -238,11 +245,29 @@ class DevMenu {
         if (Input.gKeyPress.start == 1 || Input.gKeyPress.A == 1) {
             switch (selection) {
                 case 0: // Resume
-                    closeDevMenu();
+                    if (modsChanged) {
+                        ModAPI.refreshEngine();
+                        modsChanged = false;
+                        Drawing.useRGB565Mode = false;
+                        for (i in 0...Drawing.SCREEN_XSIZE * Drawing.SCREEN_YSIZE) {
+                            Drawing.frameBuffer[i] = 0;
+                        }
+                        Scene.resetCurrentStageFolder();
+                        Scene.stageMode = STAGEMODE_LOAD;
+                        RetroEngine.gameMode = RetroEngine.ENGINE_MAINGAME;
+                        Audio.stopMusic();
+                    } else {
+                        closeDevMenu();
+                    }
                 case 1: // Restart
                     Drawing.useRGB565Mode = false;
                     for (i in 0...Drawing.SCREEN_XSIZE * Drawing.SCREEN_YSIZE) {
                         Drawing.frameBuffer[i] = 0;
+                    }
+                    if (modsChanged) {
+                        ModAPI.refreshEngine();
+                        modsChanged = false;
+                        Scene.resetCurrentStageFolder();
                     }
                     Scene.stageMode = STAGEMODE_LOAD;
                     RetroEngine.gameMode = RetroEngine.ENGINE_MAINGAME;
@@ -254,13 +279,33 @@ class DevMenu {
                 case 3: // Options
                     state = optionsMenu;
                     selection = 0;
-                case 4: // Exit
+                case 4: // Mods
+                    ModAPI.initMods();
+                    if (ModAPI.modList.length > 0) {
+                        state = modsMenu;
+                        selection = 0;
+                        scrollPos = 0;
+                    }
+                case 5: // Exit
                     RetroEngine.running = false;
             }
         }
         
         if (Input.gKeyPress.B == 1) {
-            closeDevMenu();
+            if (modsChanged) {
+                ModAPI.refreshEngine();
+                modsChanged = false;
+                Drawing.useRGB565Mode = false;
+                for (i in 0...Drawing.SCREEN_XSIZE * Drawing.SCREEN_YSIZE) {
+                    Drawing.frameBuffer[i] = 0;
+                }
+                Scene.resetCurrentStageFolder();
+                Scene.stageMode = STAGEMODE_LOAD;
+                RetroEngine.gameMode = RetroEngine.ENGINE_MAINGAME;
+                Audio.stopMusic();
+            } else {
+                closeDevMenu();
+            }
         }
     }
     
@@ -580,6 +625,105 @@ class DevMenu {
         if (Input.gKeyPress.B == 1) {
             state = optionsMenu;
             selection = 1;
+        }
+    }
+    
+    public static function modsMenu():Void {
+        var selectionColors = [0x808090, 0x808090, 0x808090, 0x808090, 0x808090, 0x808090, 0x808090, 0x808090];
+        var visibleSelection = selection - scrollPos;
+        if (visibleSelection >= 0 && visibleSelection < 8)
+            selectionColors[visibleSelection] = 0xF0F0F0;
+        
+        var dy = SCREEN_CENTERY;
+        drawDevRect(SCREEN_CENTERX - 128, dy - 84, 0x100, 0x30, 0x000080, 0xC0);
+        
+        dy -= 68;
+        drawDevString("MANAGE MODS", SCREEN_CENTERX, dy, ALIGN_CENTER, 0xF0F0F0);
+        drawDevRect(SCREEN_CENTERX - 128, dy + 36, 0x100, 0x48, 0x000080, 0xC0);
+        
+        var y = dy + 40;
+        var modCount = ModAPI.modList.length;
+        
+        for (i in 0...8) {
+            if (scrollPos + i < modCount) {
+                var mod = ModAPI.modList[scrollPos + i];
+                var modName = mod.name;
+                if (modName.length > 20) {
+                    modName = modName.substr(0, 17) + "...";
+                }
+                drawDevString(modName, SCREEN_CENTERX - 96, y, ALIGN_LEFT, selectionColors[i]);
+                drawDevString(mod.active ? "Y" : "N", SCREEN_CENTERX + 96, y, ALIGN_RIGHT, selectionColors[i]);
+                y += 8;
+            }
+        }
+        
+        var preselection = selection;
+        
+        if (Input.gKeyPress.up == 1) {
+            if (--selection < 0) selection = modCount - 1;
+            
+            if (selection >= scrollPos) {
+                if (selection > scrollPos + 7)
+                    scrollPos = selection - 7;
+            } else {
+                scrollPos = selection;
+            }
+            timer = 1;
+        } else if (Input.gKeyDown.up == 1) {
+            if (timer == 0 && --selection < 0) selection = modCount - 1;
+            
+            timer = (timer + 1) & 7;
+            
+            if (selection >= scrollPos) {
+                if (selection > scrollPos + 7)
+                    scrollPos = selection - 7;
+            } else {
+                scrollPos = selection;
+            }
+        }
+        
+        if (Input.gKeyPress.down == 1) {
+            if (++selection >= modCount) selection = 0;
+            
+            if (selection >= scrollPos) {
+                if (selection > scrollPos + 7)
+                    scrollPos = selection - 7;
+            } else {
+                scrollPos = selection;
+            }
+            timer = 1;
+        } else if (Input.gKeyDown.down == 1) {
+            if (timer == 0 && ++selection >= modCount) selection = 0;
+            
+            timer = (timer + 1) & 7;
+            
+            if (selection >= scrollPos) {
+                if (selection > scrollPos + 7)
+                    scrollPos = selection - 7;
+            } else {
+                scrollPos = selection;
+            }
+        }
+        
+        if (Input.gKeyPress.start == 1 || Input.gKeyPress.A == 1 || Input.gKeyPress.left == 1 || Input.gKeyPress.right == 1) {
+            if (selection < modCount) {
+                ModAPI.toggleMod(selection);
+                modsChanged = true;
+            }
+        }
+        
+        if (Input.gKeyDown.C == 1) {
+            if (preselection != selection && selection < modCount && preselection < modCount) {
+                ModAPI.moveMod(preselection, selection);
+                modsChanged = true;
+            }
+        }
+        
+        if (Input.gKeyPress.B == 1) {
+            ModAPI.saveMods();
+            state = mainMenu;
+            selection = 4;
+            scrollPos = 0;
         }
     }
 }

@@ -4,6 +4,7 @@ import haxe.io.Bytes;
 import sys.io.File;
 import sys.FileSystem;
 import rsdk.core.RetroString;
+import rsdk.core.ModAPI;
 
 class FileInfo {
     public var fileName:Array<Int> = RetroString.createArray(0x100);
@@ -74,6 +75,7 @@ class Reader {
         cFilePos = 0;
 
         var filePathBuf = filePath;
+        var forceFolder = false;
 
         if (RetroEngine.forceFolder)
             RetroEngine.useBinFile = RetroEngine.usingDataFileStore;
@@ -86,10 +88,20 @@ class Reader {
         RetroString.strCopy(fileInfo.fileName, "");
         RetroString.strCopy(fileName, "");
 
-        if (RetroEngine.useBinFile && !RetroEngine.forceFolder) {
+        var moddedPath = ModAPI.getModdedPath(filePathBuf);
+        if (moddedPath != filePathBuf) {
+            fileInfo.isMod = true;
+            isModdedFile = true;
+            forceFolder = true;
+            RetroEngine.forceFolder = true;
+            RetroEngine.useBinFile = false;
+            filePathBuf = moddedPath;
+        }
+
+        if (RetroEngine.useBinFile && !forceFolder) {
             var binPath = RetroString.arrayToString(binFileName);
             if (!FileSystem.exists(binPath)) {
-                Debug.printLog("Couldn't load file '" + filePathBuf + "'");
+                Debug.printLog("Couldn't load file '" + filePath + "'");
                 return false;
             }
             cFileHandle = File.getBytes(binPath);
@@ -103,7 +115,7 @@ class Reader {
             RetroString.strCopy(fileName, filePath);
             if (!parseVirtualFileSystem(fileInfo)) {
                 cFileHandle = null;
-                Debug.printLog("Couldn't load file '" + filePathBuf + "'");
+                Debug.printLog("Couldn't load file '" + filePath + "'");
                 return false;
             }
             fileInfo.readPos = readPos;
@@ -115,7 +127,7 @@ class Reader {
             RetroString.strCopy(fileInfo.fileName, filePathBuf);
             RetroString.strCopy(fileName, filePathBuf);
             if (!FileSystem.exists(filePathBuf)) {
-                Debug.printLog("Couldn't load file '" + filePathBuf + "'");
+                Debug.printLog("Couldn't load file '" + filePath + "' (tried: " + filePathBuf + ")");
                 return false;
             }
             cFileHandle = File.getBytes(filePathBuf);
@@ -133,7 +145,7 @@ class Reader {
         bufferPosition = 0;
         readSize = 0;
 
-        Debug.printLog("Loaded File '" + filePathBuf + "'");
+        Debug.printLog("Loaded File '" + filePath + "'" + (isModdedFile ? " (modded)" : ""));
         return true;
     }
 
@@ -366,6 +378,7 @@ class Reader {
             RetroEngine.useBinFile = RetroEngine.usingDataFileStore;
         } else {
             RetroEngine.forceFolder = true;
+            RetroEngine.useBinFile = false;
         }
 
         isModdedFile = fileInfo.isMod;

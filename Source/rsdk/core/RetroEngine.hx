@@ -4,6 +4,7 @@ import rsdk.core.RetroMath;
 import rsdk.core.RetroString;
 import rsdk.core.Reader;
 import rsdk.core.Debug;
+import rsdk.core.ModAPI;
 import rsdk.graphics.Drawing;
 import rsdk.graphics.Palette;
 import rsdk.scene.Scene;
@@ -93,6 +94,9 @@ class RetroEngine {
 
         var dest = BASE_PATH + RetroString.arrayToString(dataFile);
         Reader.checkBinFile(dest);
+        
+        ModAPI.modsPath = BASE_PATH;
+        ModAPI.initMods();
 
         gameMode = 3;
         gameRunning = false;
