@@ -196,11 +196,7 @@ class Audio {
         musicSource.gain = (bgmVolume * musicVolume) / (MAX_VOLUME * MAX_VOLUME);
         trackLoop = trackInfo.trackLoop;
 
-        if (trackLoop) {
-            musicSource.loops = -1;
-        } else {
-            musicSource.loops = 0;
-        }
+        musicSource.onComplete.add(onMusicComplete);
 
         musicSource.play();
         musicStatus = MUSIC_PLAYING;
@@ -208,8 +204,18 @@ class Audio {
         return true;
     }
 
+    static function onMusicComplete():Void {
+        if (trackLoop && musicSource != null && musicStatus == MUSIC_PLAYING) {
+            musicSource.currentTime = 0;
+            musicSource.play();
+        } else {
+            musicStatus = MUSIC_STOPPED;
+        }
+    }
+
     public static function stopMusic():Void {
         if (musicSource != null) {
+            musicSource.onComplete.remove(onMusicComplete);
             musicSource.stop();
             musicSource.dispose();
             musicSource = null;
@@ -297,6 +303,7 @@ class Audio {
         }
 
         if (sfxChannels[sfxChannelID].source != null) {
+            sfxChannels[sfxChannelID].source.onComplete.removeAll();
             sfxChannels[sfxChannelID].source.stop();
             sfxChannels[sfxChannelID].source.dispose();
         }
@@ -306,6 +313,12 @@ class Audio {
         if (loop) {
             source.loops = -1;
         }
+        
+        var channelID = sfxChannelID;
+        source.onComplete.add(function() {
+            onSfxComplete(channelID);
+        });
+        
         source.play();
 
         sfxChannels[sfxChannelID].sfxID = sfx;
@@ -317,11 +330,22 @@ class Audio {
         if (nextChannelPos >= CHANNEL_COUNT)
             nextChannelPos = 0;
     }
+    
+    static function onSfxComplete(channelID:Int):Void {
+        if (channelID >= 0 && channelID < CHANNEL_COUNT) {
+            sfxChannels[channelID].sfxID = -1;
+            if (sfxChannels[channelID].source != null) {
+                sfxChannels[channelID].source.dispose();
+                sfxChannels[channelID].source = null;
+            }
+        }
+    }
 
     public static function stopSfx(sfx:Int):Void {
         for (i in 0...CHANNEL_COUNT) {
             if (sfxChannels[i].sfxID == sfx) {
                 if (sfxChannels[i].source != null) {
+                    sfxChannels[i].source.onComplete.removeAll();
                     sfxChannels[i].source.stop();
                     sfxChannels[i].source.dispose();
                     sfxChannels[i].source = null;
@@ -348,6 +372,7 @@ class Audio {
             return;
 
         if (sfxChannels[sfxChannel].source != null) {
+            sfxChannels[sfxChannel].source.onComplete.removeAll();
             sfxChannels[sfxChannel].source.stop();
             sfxChannels[sfxChannel].source.dispose();
         }
@@ -355,11 +380,25 @@ class Audio {
         var source = new AudioSource(sfxList[sfx].buffer);
         source.gain = sfxVolume / MAX_VOLUME;
         source.position = new lime.math.Vector4(pan / 100.0, 0, 0);
+        
+        var shouldLoop = false;
         if (loopCount == -1) {
-            source.loops = sfxChannels[sfxChannel].loopSFX > 0 ? -1 : 0;
+            shouldLoop = sfxChannels[sfxChannel].loopSFX > 0;
         } else if (loopCount > 0) {
+            shouldLoop = true;
+        }
+        
+        if (!shouldLoop) {
+            var channelID = sfxChannel;
+            source.onComplete.add(function() {
+                onSfxComplete(channelID);
+            });
+        }
+        
+        if (shouldLoop) {
             source.loops = -1;
         }
+        
         source.play();
 
         sfxChannels[sfxChannel].source = source;
@@ -399,11 +438,14 @@ class Audio {
     public static function stopAllSfx():Void {
         for (i in 0...CHANNEL_COUNT) {
             if (sfxChannels[i].source != null) {
+                sfxChannels[i].source.onComplete.removeAll();
                 sfxChannels[i].source.stop();
                 sfxChannels[i].source.dispose();
                 sfxChannels[i].source = null;
             }
             sfxChannels[i].sfxID = -1;
+            sfxChannels[i].loopSFX = 0;
+            sfxChannels[i].sampleLength = 0;
         }
     }
 
