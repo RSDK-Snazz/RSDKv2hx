@@ -151,12 +151,13 @@ class DevMenu {
         }
         RetroEngine.gameMode = RetroEngine.ENGINE_DEVMENU;
         
-        Drawing.useRGB565Mode = true;
-        
-        var black565 = packRGB888(0, 0, 0);
         for (i in 0...Drawing.SCREEN_XSIZE * Drawing.SCREEN_YSIZE) {
-            Drawing.frameBuffer[i] = black565;
+            var paletteIdx = Drawing.frameBuffer[i] & 0xFF;
+            var color = Palette.tilePalette[paletteIdx];
+            Drawing.frameBuffer[i] = packRGB888(color.r, color.g, color.b);
         }
+        
+        Drawing.useRGB565Mode = true;
         
         Audio.pauseSound();
     }
@@ -176,11 +177,6 @@ class DevMenu {
     public static function processDevMenu():Void {
         Input.checkKeyPress(Input.gKeyPress, 0xFF);
         Input.checkKeyDown(Input.gKeyDown, 0xFF);
-        
-        var black565 = packRGB888(0, 0, 0);
-        for (i in 0...Drawing.SCREEN_XSIZE * Drawing.SCREEN_YSIZE) {
-            Drawing.frameBuffer[i] = black565;
-        }
         
         if (state != null)
             state();
